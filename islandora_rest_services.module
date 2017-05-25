@@ -36,7 +36,7 @@ function islandora_rest_services_menu() {
 function islandora_rest_services_permission() {
   return array(
     ISLANDORA_REST_SERVICES_DERIVATIVE_PERM => array(
-      'title' => t("View object\'s derivative map."),
+      'title' => t("View object's derivative map."),
       'description' => t('Allows users to fetch the mapping for an objects derivatives.'),
     ),
   );
