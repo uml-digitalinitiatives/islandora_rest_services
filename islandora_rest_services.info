@@ -1,0 +1,8 @@
+name = Islandora REST services
+description = Custom RESTful endpoint for general Islandora functions/information.
+core = 7.x
+package = Islandora
+dependencies[] = islandora
+dependencies[] = islandora_rest
+
+registry_autoload[] = PSR-4

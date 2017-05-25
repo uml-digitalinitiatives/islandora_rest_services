@@ -1,0 +1,135 @@
+<?php
+
+/**
+ * @file
+ * The module code.
+ */
+
+define('ISLANDORA_REST_SERVICES_DERIVATIVE_PERM', 'Get a derivative map');
+
+define('ISLANDORA_REST_SERVICES_CMODEL_DERIVATIVE CACHE', 'islandora_rest_services');
+
+/**
+ * Implements hook_menu().
+ */
+function islandora_rest_services_menu() {
+  return array(
+    'islandora/rest/v1/object/%/derivatives' => array(
+      'page callback' => 'islandora_rest_services_object_derivative',
+      'page arguments' => array(4),
+      'access callback' => TRUE,
+      'type' => MENU_CALLBACK,
+    ),
+    'islandora/rest/v1/object/%/full_info' => array(
+      'page callback' => 'islandora_rest_services_object_all_info',
+      'page arguments' => array(4),
+      'access callback' => TRUE,
+      'type' => MENU_CALLBACK,
+    ),
+  );
+
+}
+
+/**
+ * Implements hook_permission().
+ */
+function islandora_rest_services_permission() {
+  return array(
+    ISLANDORA_REST_SERVICES_DERIVATIVE_PERM => array(
+      'title' => t("View object\'s derivative map."),
+      'description' => t('Allows users to fetch the mapping for an objects derivatives.'),
+    ),
+  );
+}
+
+/**
+ * Does the user have the correct permission to get a derivative map.
+ *
+ * @param Object|null $user
+ *   The user object or (if null) use global $user.
+ *
+ * @throws \Exception
+ *   Throws exceptions on unauthenticated and unauthorized.
+ */
+function islandora_rest_services_has_access($user = NULL) {
+  if (!$user) {
+    global $user;
+  }
+  if (!user_access(ISLANDORA_REST_SERVICES_DERIVATIVE_PERM, $user)) {
+    if (user_is_anonymous()) {
+      throw new Exception('Unauthorized', 401);
+    }
+    else {
+      throw new Exception('Forbidden', 403);
+    }
+  }
+}
+
+/**
+ * Retrieve and return just the derivative map for an Islandora object.
+ *
+ * @param string $pid
+ *   The pid of the object.
+ *
+ * @throws \Exception
+ *   Object could not be loaded from the pid.
+ */
+function islandora_rest_services_object_derivative($pid) {
+  module_load_include('inc', 'islandora_rest', 'includes/utilities');
+
+  $object = islandora_object_load($pid);
+  if ($object) {
+    // Test for access.
+    islandora_rest_require_access('object', 'GET', $object);
+    islandora_rest_services_has_access();
+    $result = islandora_rest_services_get_mapping($object);
+    drupal_add_http_header('Content-Type', 'application/json; utf-8');
+    print drupal_json_encode($result);
+    exit();
+  }
+  else {
+    throw new Exception('Object not found', 404);
+  }
+}
+
+/**
+ * Get the derivative map for an Islandora Object.
+ *
+ * @param \AbstractObject $object
+ *   The object to get the derivative map for.
+ *
+ * @return array
+ *   The derivative map.
+ */
+function islandora_rest_services_get_mapping(AbstractObject $object) {
+  module_load_include('inc', 'islandora', 'includes/derivatives');
+  $options = array();
+  return islandora_get_derivative_list($object, $options);
+}
+
+/**
+ * Retrieve all information from both this and islandora_rest modules.
+ *
+ * @param string $pid
+ *   The pid of the object to retrieve information about.
+ */
+function islandora_rest_services_object_all_info($pid) {
+  module_load_include('inc', 'islandora_rest', 'includes/utilities');
+
+  $headers = getallheaders();
+  foreach ($headers as $k => $v) {
+    error_log("rest services header ($k => $v)");
+  }
+
+  $object = islandora_object_load($pid);
+  if ($object) {
+    islandora_rest_require_access('object', 'GET', $object);
+    islandora_rest_services_has_access();
+    $object_info = islandora_rest_get_response('object', array('pid' => $pid, 'content' => FALSE));
+    $derivatives = drupal_json_encode(islandora_rest_services_get_mapping($object));
+    $final = "{\"object_info\":$object_info,\"derivative_info\":$derivatives}";
+    print $final;
+    exit();
+
+  }
+}
