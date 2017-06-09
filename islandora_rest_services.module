@@ -89,12 +89,12 @@ function islandora_rest_services_object_derivative($pid) {
     }
     catch (Exception $e) {
       drupal_add_http_header('Status', $e->getCode());
-      $response = array('message' => $e->getMessage());
+      $response = $e->getMessage();
     }
   }
   else {
     drupal_add_http_header('Status', 404);
-    $response = array('message' => 'Object not found');
+    $response = 'Object not found';
   }
   print $response;
   exit();
@@ -135,12 +135,14 @@ function islandora_rest_services_get_response($pid) {
       $response = "{\"object_info\":$object_info,\"derivative_info\":$derivatives}";
     } catch (Exception $e) {
       drupal_add_http_header('Status', $e->getCode());
-      $response = array('message' => $e->getMessage());
+      drupal_add_http_header('Content-Type', 'text/plain');
+      $response = $e->getMessage();
     }
   }
   else {
     drupal_add_http_header('Status', 404);
-    $response = array('message' => 'Object not found');
+    drupal_add_http_header('Content-Type', 'text/plain');
+    $response = 'Object not found';
   }
   return $response;
 }
