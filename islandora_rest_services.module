@@ -80,16 +80,24 @@ function islandora_rest_services_object_derivative($pid) {
   $object = islandora_object_load($pid);
   if ($object) {
     // Test for access.
-    islandora_rest_require_access('object', 'GET', $object);
-    islandora_rest_services_has_access();
-    $result = islandora_rest_services_get_mapping($object);
-    drupal_add_http_header('Content-Type', 'application/json; utf-8');
-    print drupal_json_encode($result);
-    exit();
+    try {
+      islandora_rest_require_access('object', 'GET', $object);
+      islandora_rest_services_has_access();
+      $result = islandora_rest_services_get_mapping($object);
+      drupal_add_http_header('Content-Type', 'application/json; charset=utf-8');
+      $response = drupal_json_encode($result);
+    }
+    catch (Exception $e) {
+      drupal_add_http_header('Status', $e->getCode());
+      $response = array('message' => $e->getMessage());
+    }
   }
   else {
-    throw new Exception('Object not found', 404);
+    drupal_add_http_header('Status', 404);
+    $response = array('message' => 'Object not found');
   }
+  print $response;
+  exit();
 }
 
 /**
@@ -113,23 +121,37 @@ function islandora_rest_services_get_mapping(AbstractObject $object) {
  * @param string $pid
  *   The pid of the object to retrieve information about.
  */
-function islandora_rest_services_object_all_info($pid) {
+function islandora_rest_services_get_response($pid) {
   module_load_include('inc', 'islandora_rest', 'includes/utilities');
-
-  $headers = getallheaders();
-  foreach ($headers as $k => $v) {
-    error_log("rest services header ($k => $v)");
-  }
 
   $object = islandora_object_load($pid);
   if ($object) {
-    islandora_rest_require_access('object', 'GET', $object);
-    islandora_rest_services_has_access();
-    $object_info = islandora_rest_get_response('object', array('pid' => $pid, 'content' => FALSE));
-    $derivatives = drupal_json_encode(islandora_rest_services_get_mapping($object));
-    $final = "{\"object_info\":$object_info,\"derivative_info\":$derivatives}";
-    print $final;
-    exit();
-
+    try {
+      islandora_rest_require_access('object', 'GET', $object);
+      islandora_rest_services_has_access();
+      $object_info = islandora_rest_get_response('object', array('pid' => $pid, 'content' => FALSE));
+      $derivatives = drupal_json_encode(islandora_rest_services_get_mapping($object));
+      drupal_add_http_header('Content-Type', 'application/json; charset=utf-8');
+      $response = "{\"object_info\":$object_info,\"derivative_info\":$derivatives}";
+    } catch (Exception $e) {
+      drupal_add_http_header('Status', $e->getCode());
+      $response = array('message' => $e->getMessage());
+    }
   }
+  else {
+    drupal_add_http_header('Status', 404);
+    $response = array('message' => 'Object not found');
+  }
+  return $response;
+}
+
+/**
+ * Retrieve all information from both this and islandora_rest modules.
+ *
+ * @param string $pid
+ *   The pid of the object to retrieve information about.
+ */
+function islandora_rest_services_object_all_info($pid) {
+  print islandora_rest_services_get_response($pid);
+  exit();
 }
